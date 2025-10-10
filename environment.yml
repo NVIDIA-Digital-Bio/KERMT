@@ -1,0 +1,18 @@
+name: kermt
+channels:
+  - rmg
+  - conda-forge
+  - nvidia
+  - rdkit
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.11
+  - pytorch-gpu=2.7.1
+  - rdkit=2025.03.2
+  - descriptastorus>2.2.0
+  - optuna
+  - scikit-learn
+  - tensorboard
+  - setuptools>=80.0.0
+  - protobuf>=5.29.5
