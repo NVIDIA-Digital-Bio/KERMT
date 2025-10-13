@@ -90,27 +90,27 @@ smis_only
 ```
 
 #### Running Pretraining
-For pretraining on multiple GPUs, set available number of GPUs as `WORLD_SIZE`. As pretraining datasets are large, it is recommended to use a large batch size and ensure near-full GPU memory utilization for maximum efficiency.
+For pretraining on multiple GPUs, set available number of GPUs as `WORLD_SIZE`. As pretraining datasets are large, it is recommended to use a large batch size and ensure near-full GPU memory utilization for maximum efficiency. This example shows how to pretrain on 2 GPUs on a prepared pretraining dataset in the `tests/data/pretrain` directory.
 ```bash
 WORLD_SIZE=2 python pretrain_ddp.py  \
-    --train_data_path tests/data/smis_only/train_9k \
-    --val_data_path tests/data/smis_only/val_1k \
+    --train_data_path tests/data/pretrain/train_9k \
+    --val_data_path tests/data/pretrain/val_1k \
     --save_dir model/pretrain \
-    --atom_vocab_path tests/data/smis_only/smis_only_atom_vocab.pkl \
-    --bond_vocab_path tests/data/smis_only/smis_only_bond_vocab.pkl \
+    --atom_vocab_path tests/data/pretrain/pretrain_atom_vocab.pkl \
+    --bond_vocab_path tests/data/pretrain/pretrain_bond_vocab.pkl \
     --batch_size 256   --dropout 0.1 --depth 6 --num_attn_head 4 --hidden_size 800 \
     --epochs 100 --init_lr 1E-5 --max_lr 1.5E-4 --final_lr 1E-5 --warmup_epochs 20 \
     --weight_decay 1E-7 --activation PReLU --backbone gtrans --embedding_output_type \
     both  --tensorboard --save_interval 100 --use_cuikmolmaker_featurization
 ```
-
+For preparing your own pretraining dataset, please run the [Data Preparation](#data-preparation), [vocabulary generation](#atombond-contextual-property-vocabulary), and [data splitting](#data-splitting) sections above.
 
 ## Finetuning
-The finetune dataset should be organized into three `.csv` files for train, validation, and test sets. Each of the `.csv` files should contain a column named as `smiles` and columns for prediction tasks. See `tests/data/finetune/` for examples.
+The dataset for finetuning should be organized into three `.csv` files for train, validation, and test sets. Each of the `.csv` files should contain a column named as `smiles` and columns for prediction tasks. See `tests/data/finetune/` for examples.
 
 
 #### (Optional) Molecular feature extraction
-Given a labelled molecular dataset, it is possible to precompute additional molecular features required to finetune the model from the existing pretrained model. The feature matrix is stored as `.npz`. This examples shows how to precompute normalized RDKit 2D features.
+Given a labelled molecular dataset, it is possible to precompute additional molecular features required to finetune the model from the existing pretrained model. The feature matrix is stored as `.npz`. This examples shows how to precompute normalized RDKit 2D features for training dataset. This step should be repeated for validation and test datasets.
 ``` bash
 python scripts/save_features.py --data_path tests/data/finetune/train.csv \
                                 --save_path tests/data/finetune/train.npz \
