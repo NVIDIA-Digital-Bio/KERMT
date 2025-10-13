@@ -189,7 +189,7 @@ python main.py predict \
 
 
 ## References
-- [Original GROVER paper](https://arxiv.org/abs/2007.02835)
-- [Original GROVER implementation](https://github.com/tencent-ailab/grover)
 - New paper: Coming soon!
 - New dataset: Coming soon!
+- [Original GROVER paper](https://arxiv.org/abs/2007.02835)
+- [Original GROVER implementation](https://github.com/tencent-ailab/grover)

@@ -37,7 +37,6 @@ from kermt.util.utils import create_logger
 from task.cross_validate import cross_validate
 from task.fingerprint import generate_fingerprints
 from task.predict import make_predictions, write_prediction
-from task.pretrain import pretrain_model
 from kermt.data.torchvocab import MolVocab
 from task.train import run_training
 
