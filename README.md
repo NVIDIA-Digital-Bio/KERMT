@@ -1,29 +1,19 @@
-<div style="text-align: center; font-size: 24px; font-weight: bold;">
-KERMT
-</div>
-<div style="text-align: center; font-size: 16px;">
-A graph neural network model for molecular property prediction.
-</div>
+# KERMT
+A pretrained graph neural network model for molecular property prediction.
 
-This implementation of the KERMT GNN model uses PyTorch Distributed Data Parallel (DDP) for distributed pretraining,  automates hyperparameter tuning, and accelerates finetuning and prediction using [cuik-molmaker](https://github.com/NVIDIA-Digital-Bio/cuik-molmaker).
+**K**inetic GROV**ER** **M**ulti-**T**ask (KERMT) is an enhanced reimplementation of the [GROVER](https://arxiv.org/abs/2007.02835) model. The KERMT implementation uses PyTorch Distributed Data Parallel (DDP) for distributed pretraining,  automates hyperparameter tuning, and accelerates finetuning and prediction using [cuik-molmaker](https://github.com/NVIDIA-Digital-Bio/cuik-molmaker).
 
 This implementation is based on the [original GROVER implementation](https://github.com/tencent-ailab/grover) and [paper](https://arxiv.org/abs/2007.02835).
 
 ## Requirements
 We recommend using a Docker container for running the model. For developers, we have provided a Dockerfile that was used to create the container.
 
-## Pretained Model Download
-We provide the pretrained models used in the paper. 
-   - [GROVER<sub>base</sub>](https://1drv.ms/u/s!Ak4XFI0qaGjOhdlwa2_h-8WAymU1AQ)
-   - [GROVER<sub>large</sub>](https://1drv.ms/u/s!Ak4XFI0qaGjOhdlxC3mGn0LC1NFd6g) 
-
-
 ## Setup
 
 #### Clone the repository
 ```bash
-git clone https://github.com/NVIDIA-Digital-Bio/kermt.git
-cd kermt
+git clone https://github.com/NVIDIA-Digital-Bio/KERMT.git
+cd KERMT
 ```
 
 #### Build the container
@@ -48,13 +38,19 @@ export CUBLAS_WORKSPACE_CONFIG=:4096:8 # for deterministic results
 #### [Alternative to Docker container] Install conda environment from file
 ```bash
 # Create conda environment
-cd kermt
+cd KERMT
 conda env create -n kermt -f environment.yml
 conda activate kermt
 
 # Install cuik-molmaker
 pip install cuik_molmaker==0.1.1 --index-url https://pypi.nvidia.com/rdkit-2025.03.2_torch-2.7.1/
 ```
+
+## Pretained Model Download
+The pretrained models models can be downloaded from the following links. 
+   - [GROVER<sub>base</sub>](https://1drv.ms/u/s!Ak4XFI0qaGjOhdlwa2_h-8WAymU1AQ)
+   - [GROVER<sub>large</sub>](https://1drv.ms/u/s!Ak4XFI0qaGjOhdlxC3mGn0LC1NFd6g) 
+
 
 ## Pretraining
 #### Data Preparation
