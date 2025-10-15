@@ -189,7 +189,9 @@ python main.py predict \
 
 
 ## References
-- New paper: Coming soon!
-- New dataset: Coming soon!
+- Paper:[Multitask finetuning and acceleration of chemical
+pretrained models for small molecule drug
+property prediction](https://arxiv.org/abs/2510.12719)
+- Dataset: [Figshare link](https://figshare.com/articles/dataset/Datasets_for_Multitask_finetuning_and_acceleration_of_chemical_pretrained_models_for_small_molecule_drug_property_prediction_/30350548/2)
 - [Original GROVER paper](https://arxiv.org/abs/2007.02835)
 - [Original GROVER implementation](https://github.com/tencent-ailab/grover)
