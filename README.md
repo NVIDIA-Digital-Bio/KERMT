@@ -1,7 +1,15 @@
-# KERMT
-A pretrained graph neural network model for molecular property prediction.
+<h1 align="center">KERMT</h1>
 
-**K**inetic GROV**ER** **M**ulti-**T**ask (KERMT) is an enhanced reimplementation of the [GROVER](https://arxiv.org/abs/2007.02835) model. The KERMT implementation uses PyTorch Distributed Data Parallel (DDP) for distributed pretraining,  automates hyperparameter tuning, and accelerates finetuning and prediction using [cuik-molmaker](https://github.com/NVIDIA-Digital-Bio/cuik-molmaker).
+This is the official code repository for the paper titled [Multitask finetuning and acceleration of chemical pretrained models for small molecule drug property prediction](https://arxiv.org/abs/2510.12719).
+
+<p align="center">
+    <img width="750" src="figures/concept.png"/>
+</p>
+
+
+**K**inetic GROV**ER** **M**ulti-**T**ask (KERMT) is a pretrained graph neural network model for molecular property prediction.
+
+KERMT is an enhanced reimplementation of the [GROVER](https://arxiv.org/abs/2007.02835) model. The KERMT implementation uses PyTorch Distributed Data Parallel (DDP) for distributed pretraining,  automates hyperparameter tuning, and accelerates finetuning and prediction using [cuik-molmaker](https://github.com/NVIDIA-Digital-Bio/cuik-molmaker).
 
 This implementation is based on the [original GROVER implementation](https://github.com/tencent-ailab/grover) and [paper](https://arxiv.org/abs/2007.02835).
 
