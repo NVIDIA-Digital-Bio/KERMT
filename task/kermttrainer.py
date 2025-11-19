@@ -60,6 +60,7 @@ from torch.utils.data import DataLoader
 from torch.cuda import nvtx
 
 from kermt.model.models import KermtTask
+from kermt.util.scheduler import NoamLR
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
 class KERMTTrainer:
@@ -71,8 +72,7 @@ class KERMTTrainer:
                  fg_szie: int,
                  train_dataloader: DataLoader,
                  val_dataloader: DataLoader,
-                 optimizer,
-                 scheduler,
+                 world_size: int,
                  gpu_id,
                  n_steps: int,
                  logger: Logger = None):
@@ -85,8 +85,7 @@ class KERMTTrainer:
         :param fg_szie: the size of semantic motifs (functional groups)
         :param train_dataloader: the training dataloader.
         :param val_dataloader: the validation dataloader.
-        :param optimizer: the optimizer.
-        :param scheduler: the scheduler.
+        :param world_size: the world size.
         :param gpu_id: the gpu id.
         :param logger: the logger
         """
@@ -102,8 +101,22 @@ class KERMTTrainer:
         self.bond_vocab_size = bond_vocab_size
         self.debug = logger.debug if logger is not None else print
 
-        self.optimizer = optimizer
-        self.scheduler = scheduler
+        # Build optimizer with all parameters
+        ## NOTE: This is different for KermtFinetuneTask and KERMTEmbedding
+        ## KermtEmbedding version used here
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
+
+        steps_per_epoch = train_dataloader.dataset.len // (args.batch_size*world_size)
+        self.scheduler = NoamLR(
+            optimizer=self.optimizer,
+            warmup_epochs=args.warmup_epochs,
+            total_epochs=args.epochs,
+            steps_per_epoch=steps_per_epoch,
+            init_lr=args.init_lr,
+            max_lr=args.max_lr,
+            final_lr=args.final_lr,
+            fine_tune_coff=args.fine_tune_coff
+        )
 
         self.args = args
         self.n_iter = 0

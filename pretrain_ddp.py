@@ -28,20 +28,16 @@ from torch.utils.data import DataLoader
 
 import torch.multiprocessing as mp
 from torch.utils.data.distributed import DistributedSampler
-from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 import os
 
 
-from kermt.util.parsing import parse_args
 from kermt.data.kermtdataset import get_data, split_data, KermtCollator
 from kermt.util.utils import create_logger
 from kermt.model.models import KERMTEmbedding
 from task.kermttrainer import KERMTTrainer
-from kermt.util.scheduler import NoamLR
 from kermt.data.torchvocab import MolVocab
 from kermt.data.kermtdataset import BatchMolDataset
-from argparse import Namespace
 from kermt.util.parsing import parse_args_ddp
 from kermt.util.nn_utils import param_count
 
@@ -143,28 +139,6 @@ def main(rank: int, world_size: int):
 
     print(f'Number of parameters = {param_count(kermt_model):,}')
 
-
-    # Build optimizer
-    ## NOTE: This is different for KermtFinetuneTask and KERMTEmbedding
-    ## KermtEmbedding version used here
-    optimizer = torch.optim.Adam(kermt_model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
-
-    # Build Learning rate scheduler   
-    # Divide the parameter into two groups for the finetune.
-    # args.batch_size is micro batch size
-
-    steps_per_epoch = train_data_size // (args.batch_size*world_size)
-    scheduler = NoamLR(
-        optimizer=optimizer,
-        warmup_epochs=args.warmup_epochs,
-        total_epochs=args.epochs,
-        steps_per_epoch=steps_per_epoch,
-        init_lr=args.init_lr,
-        max_lr=args.max_lr,
-        final_lr=args.final_lr,
-        fine_tune_coff=args.fine_tune_coff
-    )
- 
     # Build trainer
     trainer = KERMTTrainer(args=args,
                             embedding_model=kermt_model,
@@ -173,11 +147,11 @@ def main(rank: int, world_size: int):
                             fg_szie=fg_size,
                             train_dataloader=train_dataloader,
                             val_dataloader=val_dataloader,
-                            optimizer=optimizer,
-                            scheduler=scheduler,
+                            world_size=world_size,
                             gpu_id=rank,
                             n_steps=0,
-                            logger=logger)
+                            logger=logger
+                            )
 
     if args.save_dir is not None:
         last_ckpt_path = os.path.join(args.save_dir, "last_checkpoint.pt")
