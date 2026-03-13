@@ -691,7 +691,8 @@ def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> loggi
 def load_checkpoint(path: str,
                     current_args: Namespace = None,
                     cuda: bool = None,
-                    logger: logging.Logger = None):
+                    logger: logging.Logger = None,
+                    strict_shape_check: bool = True):
     """
     Loads a model checkpoint.
 
@@ -699,6 +700,7 @@ def load_checkpoint(path: str,
     :param current_args: The current arguments. Replaces the arguments loaded from the checkpoint if provided.
     :param cuda: Whether to move model to cuda.
     :param logger: A logger.
+    :param strict_shape_check: Whether to check if the shape of the loaded model parameters matches the shape of the model parameters.
     :return: The loaded MPNN.
     """
     debug = logger.debug if logger is not None else print
@@ -731,9 +733,12 @@ def load_checkpoint(path: str,
         if new_param_name not in model_state_dict:
             debug(f'Pretrained parameter "{param_name}" cannot be found in model parameters.')
         elif model_state_dict[new_param_name].shape != loaded_state_dict[param_name].shape:
-            debug(f'Pretrained parameter "{param_name}" '
-                  f'of shape {loaded_state_dict[param_name].shape} does not match corresponding '
-                  f'model parameter of shape {model_state_dict[new_param_name].shape}.')
+            if strict_shape_check:
+                raise ValueError(f'Pretrained parameter "{param_name}" of shape {loaded_state_dict[param_name].shape} does not match corresponding model parameter of shape {model_state_dict[new_param_name].shape}.')
+            else:
+                debug(f'Pretrained parameter "{param_name}" '
+                    f'of shape {loaded_state_dict[param_name].shape} does not match corresponding '
+                    f'model parameter of shape {model_state_dict[new_param_name].shape}.')
         else:
             debug(f'Loading pretrained parameter "{param_name}".')
             pretrained_state_dict[new_param_name] = loaded_state_dict[param_name]
