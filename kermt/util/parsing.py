@@ -85,6 +85,10 @@ def add_predict_args(parser: ArgumentParser):
     parser.add_argument('--seed', type=int, default=0, help='Random seed for prediction')
     parser.add_argument('--no_features_scaling', action='store_true', default=False,
                         help='Turn off scaling of features')
+    parser.add_argument('--rdkit2D_normalization_type', type=str, choices=("fast", "best", "descriptastorus"), default='fast',
+                        help='Type of normalization for rdkit2D features. Choices: fast, best, descriptastorus')
+    parser.add_argument('--use_cuikmolmaker_featurization', action='store_true', default=False,
+                        help='Use cuik-molmaker package for featurization of atoms and bonds in molecules')
 
 
 def add_fingerprint_args(parser):
