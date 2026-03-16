@@ -55,7 +55,7 @@ from torch.utils.data import DataLoader
 from kermt.data import MolCollator
 from kermt.data import StandardScaler
 from kermt.util.metrics import get_metric_func
-from kermt.util.nn_utils import initialize_weights, param_count
+from kermt.util.nn_utils import initialize_weights, param_count_trainable, param_count_total
 from torch.utils.tensorboard import SummaryWriter
 from kermt.util.scheduler import NoamLR
 from kermt.util.utils import build_optimizer, build_lr_scheduler, makedirs, load_checkpoint, get_loss_func, \
@@ -201,7 +201,8 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
         optimizer = build_optimizer(model, args)
 
         debug(model)
-        debug(f'Number of parameters = {param_count(model):,}')
+        debug(f'Number of trainable parameters = {param_count_trainable(model):,}')
+        debug(f'Number of total parameters = {param_count_total(model):,}')
 
         start_epoch = 0  # Default: start from epoch 0
         # Try to load optimizer state - only use start_epoch if optimizer loads successfully

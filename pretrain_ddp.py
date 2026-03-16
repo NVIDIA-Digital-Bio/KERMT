@@ -39,7 +39,7 @@ from task.kermttrainer import KERMTTrainer
 from kermt.data.torchvocab import MolVocab
 from kermt.data.kermtdataset import BatchMolDataset
 from kermt.util.parsing import parse_args_ddp
-from kermt.util.nn_utils import param_count
+from kermt.util.nn_utils import param_count_trainable, param_count_total
 
 
 def configure_nccl_for_topology():
@@ -175,7 +175,8 @@ def main(rank: int, world_size: int):
     # Build model
     kermt_model = KERMTEmbedding(args)
 
-    print(f'Number of parameters = {param_count(kermt_model):,}')
+    print(f'Number of trainable parameters = {param_count_trainable(kermt_model):,}')
+    print(f'Number of total parameters = {param_count_total(kermt_model):,}')
 
     # Build trainer
     trainer = KERMTTrainer(args=args,

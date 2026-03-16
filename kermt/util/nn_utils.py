@@ -7,13 +7,21 @@ import torch
 from torch import nn as nn
 
 
-def param_count(model: nn.Module) -> int:
+def param_count_trainable(model: nn.Module) -> int:
     """
     Determines number of trainable parameters.
     :param model: An nn.Module.
     :return: The number of trainable parameters.
     """
     return sum(param.numel() for param in model.parameters() if param.requires_grad)
+
+def param_count_total(model: nn.Module) -> int:
+    """
+    Determines total number of parameters.
+    :param model: An nn.Module.
+    :return: The number of total parameters.
+    """
+    return sum(param.numel() for param in model.parameters())
 
 
 def index_select_nd(source: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
