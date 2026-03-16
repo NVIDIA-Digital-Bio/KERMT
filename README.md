@@ -189,6 +189,7 @@ python main.py predict \
     --data_path tests/data/finetune/test.csv \
     --checkpoint_dir path/to/finetuned_model/ \
     --no_features_scaling \
+    --features_generator rdkit_2d_normalized_cuik_molmaker \
     --output path/to/predictions.csv
 ```
 
