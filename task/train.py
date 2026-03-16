@@ -59,7 +59,7 @@ from kermt.util.nn_utils import initialize_weights, param_count
 from torch.utils.tensorboard import SummaryWriter
 from kermt.util.scheduler import NoamLR
 from kermt.util.utils import build_optimizer, build_lr_scheduler, makedirs, load_checkpoint, get_loss_func, \
-    save_checkpoint, build_model
+    save_checkpoint, save_model_for_restart, build_model
 from kermt.util.utils import get_class_sizes, get_data, split_data, get_task_names
 from task.predict import predict, evaluate, evaluate_predictions
 
@@ -309,6 +309,9 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
             else:
                 curr_epoch_best_by_loss = False
 
+            save_model_for_restart(os.path.join(save_dir, 'last_checkpoint.pt'), model, optimizer, scheduler, scaler, features_scaler, args,
+            epoch+1 # save with +1 so that loaded checkpoint will start from the next epoch
+            )
             # Save model checkpoint if improved validation score
             if args.select_by_loss:
                 if curr_epoch_best_by_loss:

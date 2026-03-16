@@ -896,6 +896,31 @@ def save_checkpoint(path: str,
     torch.save(state, path)
 
 
+def save_model_for_restart(path:str, model, optimizer, scheduler, scaler, features_scaler, args, epoch):
+    """
+    Save the model, optimizer, and scheduler for restart. Saves model state_dict, optimizer state_dict, scheduler state_dict, data_scaler, features_scaler, and args.
+    """
+    # checkpoint_path is the path for pretrained model. It is not needed to restart finetuning.
+    if hasattr(args, 'checkpoint_path'):
+        delattr(args, 'checkpoint_path')
+    state = {
+        'args': args,
+        'epoch': epoch,
+        'state_dict': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'scheduler': scheduler.state_dict(),
+        'data_scaler': {
+            'means': scaler.means,
+            'stds': scaler.stds
+        } if scaler is not None else None,
+        'features_scaler': {
+            'means': features_scaler.means,
+            'stds': features_scaler.stds
+        } if features_scaler is not None else None
+    }
+    torch.save(state, path)
+
+
 def build_model(args: Namespace, model_idx=0):
     """
     Builds a MPNN, which is a message passing neural network + feed-forward layers.
