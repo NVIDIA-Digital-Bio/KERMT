@@ -14,5 +14,5 @@ dependencies:
   - optuna
   - scikit-learn
   - tensorboard
-  - setuptools>=80.0.0
+  - setuptools<82.0.0
   - protobuf>=5.29.5
