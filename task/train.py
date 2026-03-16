@@ -295,7 +295,7 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
                   'cur_lr: {:.5f}'.format(scheduler.get_lr()[-1]),
                   't_time: {:.4f}s'.format(t_time),
                   'v_time: {:.4f}s'.format(v_time),
-                  )
+                  flush=True)
 
             if args.tensorboard:
                 writer.add_scalar('loss/train', train_loss, epoch)
