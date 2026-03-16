@@ -148,7 +148,8 @@ def make_predictions(args: Namespace, newest_train_args=None, smiles: List[str] 
 
     logger = create_logger('predict', quiet=False)
     print('Loading data')
-    args.task_names = get_task_names(args.data_path)
+    # Use task_names from checkpoint for blinded test data (no target columns)
+    args.task_names = train_args.task_names if hasattr(train_args, 'task_names') else get_task_names(args.data_path)
     if smiles is not None:
         test_data = get_data_from_smiles(smiles=smiles, skip_invalid_smiles=False)
     else:
@@ -180,8 +181,9 @@ def make_predictions(args: Namespace, newest_train_args=None, smiles: List[str] 
             test_data.normalize_features(features_scaler)
 
     # Predict with each model individually and sum predictions
-    if hasattr(args, 'num_tasks'):
-        sum_preds = np.zeros((len(test_data), args.num_tasks))
+    # Use train_args.num_tasks since args.num_tasks may be 0 for blinded test data
+    num_tasks = train_args.num_tasks if hasattr(train_args, 'num_tasks') else args.num_tasks
+    sum_preds = np.zeros((len(test_data), num_tasks))
     print(f'Predicting...')
     shared_dict = {}
     # loss_func = torch.nn.BCEWithLogitsLoss()

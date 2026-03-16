@@ -463,7 +463,8 @@ class KermtFinetuneTask(nn.Module):
 
         dropout = nn.Dropout(args.dropout)
         activation = get_activation_function(args.activation)
-        # TODO: ffn_hidden_size
+        # Default ffn_hidden_size to hidden_size if not specified
+        ffn_hidden_size = args.ffn_hidden_size if args.ffn_hidden_size is not None else args.hidden_size
         # Create FFN layers
         if args.ffn_num_layers == 1:
             ffn = [
@@ -473,18 +474,18 @@ class KermtFinetuneTask(nn.Module):
         else:
             ffn = [
                 dropout,
-                nn.Linear(first_linear_dim, args.ffn_hidden_size)
+                nn.Linear(first_linear_dim, ffn_hidden_size)
             ]
             for _ in range(args.ffn_num_layers - 2):
                 ffn.extend([
                     activation,
                     dropout,
-                    nn.Linear(args.ffn_hidden_size, args.ffn_hidden_size),
+                    nn.Linear(ffn_hidden_size, ffn_hidden_size),
                 ])
             ffn.extend([
                 activation,
                 dropout,
-                nn.Linear(args.ffn_hidden_size, args.output_size),
+                nn.Linear(ffn_hidden_size, args.output_size),
             ])
 
         # Create FFN model

@@ -255,8 +255,8 @@ def add_finetune_args(parser: ArgumentParser):
                                                                                      'layer.')
     parser.add_argument('--attn_hidden', type=int, default=4, nargs='?', help='Self attention layer '
                                                                               'hidden layer size.')
-    parser.add_argument('--attn_out', type=int, default=128, nargs='?', help='Self attention layer '
-                                                                             'output feature size.')
+    parser.add_argument('--attn_out', type=int, default=8, nargs='?', help='Self attention layer '
+                                                                             'output feature size (FFN input = hidden_size * attn_out).')
 
     parser.add_argument('--dist_coff', type=float, default=0.1, help='The dist coefficient for output of two branches.')
 

@@ -56,13 +56,20 @@ def run():
     n_graphs = len(res)
     perm = np.random.permutation(n_graphs)
 
-    nfold = int(n_graphs / args.sample_per_file + 1)
+    nfold = (n_graphs + args.sample_per_file - 1) // args.sample_per_file
     print("Number of files: %d" % nfold)
-    if os.path.exists(args.output_path):
-        shutil.rmtree(args.output_path)
+
+    # Create output directory structure
     os.makedirs(args.output_path, exist_ok=True)
     graph_path = os.path.join(args.output_path, "graph")
     fea_path = os.path.join(args.output_path, "feature")
+
+    # Only remove the specific subdirectories we'll recreate
+    if os.path.exists(graph_path):
+        shutil.rmtree(graph_path)
+    if os.path.exists(fea_path):
+        shutil.rmtree(fea_path)
+
     os.makedirs(graph_path, exist_ok=True)
     os.makedirs(fea_path, exist_ok=True)
 

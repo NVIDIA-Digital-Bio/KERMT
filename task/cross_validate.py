@@ -40,12 +40,14 @@ This implementation is adapted from
 https://github.com/chemprop/chemprop/blob/master/chemprop/train/cross_validate.py
 """
 import os
+import random
 import time
 from argparse import Namespace
 from logging import Logger
 from typing import Tuple
 
 import numpy as np
+import torch
 
 from kermt.util.utils import get_task_names
 from kermt.util.utils import makedirs
@@ -73,6 +75,14 @@ def cross_validate(args: Namespace, logger: Logger = None) -> Tuple[float, float
         args.seed = init_seed + fold_num
         args.save_dir = os.path.join(save_dir, f'fold_{fold_num}')
         makedirs(args.save_dir)
+
+        # Reset random seeds for this fold to ensure different model initialization
+        # This is important when using separate train/val/test paths (no data splitting)
+        # so that each fold produces a model with different random weight initialization
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
+        np.random.seed(args.seed)
+        random.seed(args.seed)
         if args.parser_name == "finetune":
             model_scores = run_training(args, logger)
         else:

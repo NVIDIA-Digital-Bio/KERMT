@@ -58,7 +58,7 @@ class NoamLR(_LRScheduler):
         self.init_lr = np.array([init_lr] * self.num_lrs)
         self.max_lr = np.array([max_lr] * self.num_lrs)
         self.final_lr = np.array([final_lr] * self.num_lrs)
-        self.lr_coff = np.array([1] * self.num_lrs)
+        self.lr_coff = np.array([1.0] * self.num_lrs, dtype=float)
         self.fine_tune_param_idx = fine_tune_param_idx
         self.lr_coff[self.fine_tune_param_idx] = fine_tune_coff
 

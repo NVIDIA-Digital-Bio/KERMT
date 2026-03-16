@@ -159,6 +159,10 @@ class MolGraph:
         # Convert smiles to molecule
         mol = Chem.MolFromSmiles(smiles)
 
+        # Check if SMILES is valid
+        if mol is None:
+            raise ValueError(f"Invalid SMILES string: '{smiles}'. RDKit failed to parse it.")
+
         # fake the number of "atoms" if we are collapsing substructures
         self.n_atoms = mol.GetNumAtoms()
         self.n_rdkit_bonds = mol.GetNumBonds() # number of bonds in rdkit molecule (without considering bond drop rate)

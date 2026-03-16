@@ -84,7 +84,7 @@ class TorchVocab(object):
         return (seq, len(seq)) if with_len else seq
 
     @staticmethod
-    def load_vocab(vocab_path: str) -> 'Vocab':
+    def load_vocab(vocab_path: str) -> 'TorchVocab':
         with open(vocab_path, "rb") as f:
             return pickle.load(f)
 
@@ -173,6 +173,9 @@ class MolVocab(TorchVocab):
             if i >= end:
                 break
             mol = Chem.MolFromSmiles(smi)
+            # Skip invalid molecules (RDKit returns None for invalid SMILES)
+            if mol is None:
+                continue
             if vocab_type == 'atom':
                 for atom in mol.GetAtoms():
                     v = atom_to_vocab(mol, atom)
