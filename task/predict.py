@@ -81,7 +81,6 @@ def predict(model: nn.Module,
     loss_sum, iter_count = 0, 0
 
     mol_collator = MolCollator(args=args, shared_dict=shared_dict)
-    # mol_dataset = MoleculeDataset(data)
 
     num_workers = 0
     mol_loader = DataLoader(data, batch_size=batch_size, shuffle=False, num_workers=num_workers,
