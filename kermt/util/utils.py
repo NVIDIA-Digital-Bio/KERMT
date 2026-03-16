@@ -39,6 +39,7 @@ The general utility functions.
 """
 import csv
 import logging
+import math
 import os
 import pickle
 import random
@@ -602,13 +603,14 @@ def load_args(path: str) -> Namespace:
 
 
 
-def get_ffn_layer_id(model: KermtFinetuneTask):
+def get_ffn_layer_names(model: KermtFinetuneTask):
     """
     Get the ffn layer id for KermtFinetune Task. (Adhoc!)
     :param model:
     :return:
     """
-    return [id(x) for x in model.state_dict() if "kermt" not in x and "ffn" in x]
+    # Readout and atom/bond ffn layers are returned
+    return [name for name, _ in model.named_parameters() if "kermt" not in name]
 
 
 def build_optimizer(model: nn.Module, args: Namespace):
@@ -622,15 +624,19 @@ def build_optimizer(model: nn.Module, args: Namespace):
 
     # Only adjust the learning rate for the KermtFinetuneTask.
     if type(model) == KermtFinetuneTask:
-        ffn_params = get_ffn_layer_id(model)
+        ffn_param_names = get_ffn_layer_names(model)
     else:
         # if not, init adam optimizer normally.
         return torch.optim.Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
-    base_params = filter(lambda p: id(p) not in ffn_params, model.parameters())
-    ffn_params = filter(lambda p: id(p) in ffn_params, model.parameters())
-    if args.fine_tune_coff == 0:
+    base_params = [param for k, param in model.named_parameters() if k not in ffn_param_names]
+    ffn_params = [param for k, param in model.named_parameters() if k in ffn_param_names]
+    print(f"Number of base params: {len(base_params)}, number of ffn params: {len(ffn_params)}")
+    if math.isclose(args.fine_tune_coff, 0.0, abs_tol=1e-6):
+        print("Freezing parameters of encoder")
         for param in base_params:
             param.requires_grad = False
+    else:
+        print("Not freezing parameters of encoder")
 
     optimizer = torch.optim.Adam([
         {'params': base_params, 'lr': args.init_lr * args.fine_tune_coff},
@@ -938,7 +944,8 @@ def build_model(args: Namespace, model_idx=0):
     else:
         # finetune and evaluation case.
         model = KermtFinetuneTask(args)
-    initialize_weights(model=model, model_idx=model_idx)
+    all_param_names = [name for name, _ in model.named_parameters()]
+    initialize_weights(model=model, model_idx=model_idx, init_param_names=all_param_names)
     return model
 
 def get_memory_usage():

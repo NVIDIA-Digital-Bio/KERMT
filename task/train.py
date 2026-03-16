@@ -192,9 +192,7 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
             debug(f'Building model {model_idx}')
             model = build_model(model_idx=model_idx, args=args)
             loaded_ckpt_state = {}
-        if args.fine_tune_coff != 1 and args.checkpoint_paths is not None:
-            debug("Fine tune fc layer with different lr")
-            initialize_weights(model_idx=model_idx, model=model.ffn, distinct_init=args.distinct_init)
+
         # Get loss and metric functions
         loss_func = get_loss_func(args, model)
 
