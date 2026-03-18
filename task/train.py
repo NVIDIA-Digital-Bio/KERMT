@@ -201,6 +201,9 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
         debug(model)
         debug(f'Number of trainable parameters = {param_count_trainable(model):,}')
         debug(f'Number of total parameters = {param_count_total(model):,}')
+        if args.cuda:
+            debug('Moving model to cuda')
+            model = model.cuda()
 
         start_epoch = 0  # Default: start from epoch 0
         # Try to load optimizer state - only use start_epoch if optimizer loads successfully
@@ -216,9 +219,6 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
             except ValueError as e:
                 print(f"Could not load optimizer state (model structure may differ): {e}")
                 print("Starting fresh finetuning from epoch 0.")
-        if args.cuda:
-            debug('Moving model to cuda')
-            model = model.cuda()
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
         save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
