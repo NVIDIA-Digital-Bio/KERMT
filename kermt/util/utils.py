@@ -39,6 +39,7 @@ The general utility functions.
 """
 import csv
 import logging
+import math
 import os
 import pickle
 import random
@@ -63,16 +64,22 @@ from kermt.util.scheduler import NoamLR
 
 def get_model_args():
     """
-    Get model structure related parameters
+    Get model structure related parameters.
+
+    Note: 'attn_out' is intentionally excluded. It controls the self-attention readout
+    output size (FFN input = hidden_size * attn_out) and is only used during finetuning.
+    Old checkpoints may have attn_out=128 saved, which causes model size to blow up.
+    By excluding it, we allow the command-line/default value to take precedence.
 
     :return: a list containing parameters
     """
     return ['model_type', 'ensemble_size', 'input_layer', 'hidden_size', 'bias', 'depth',
             'dropout', 'activation', 'undirected', 'ffn_hidden_size', 'ffn_num_layers',
             'atom_message', 'weight_decay', 'select_by_loss', 'skip_epoch', 'backbone',
-            'embedding_output_type', 'self_attention', 'attn_hidden', 'attn_out', 'dense',
-            'bond_drop_rate', 'distinct_init', 'aug_rate', 'fine_tune_coff', 'nencoders',
+            'embedding_output_type', 'self_attention', 'attn_hidden', 'dense',
+            'bond_drop_rate', 'distinct_init', 'aug_rate', 'nencoders',
             'dist_coff', 'no_attach_fea', 'coord', "num_attn_head", "num_mt_block",
+            'num_tasks',  # Required for prediction on blinded data (no target columns)
             ]
 
 def get_finetune_predict_consistency_args():
@@ -596,13 +603,14 @@ def load_args(path: str) -> Namespace:
 
 
 
-def get_ffn_layer_id(model: KermtFinetuneTask):
+def get_ffn_layer_names(model: KermtFinetuneTask):
     """
     Get the ffn layer id for KermtFinetune Task. (Adhoc!)
     :param model:
     :return:
     """
-    return [id(x) for x in model.state_dict() if "kermt" not in x and "ffn" in x]
+    # Readout and atom/bond ffn layers are returned
+    return [name for name, _ in model.named_parameters() if "kermt" not in name]
 
 
 def build_optimizer(model: nn.Module, args: Namespace):
@@ -616,15 +624,19 @@ def build_optimizer(model: nn.Module, args: Namespace):
 
     # Only adjust the learning rate for the KermtFinetuneTask.
     if type(model) == KermtFinetuneTask:
-        ffn_params = get_ffn_layer_id(model)
+        ffn_param_names = get_ffn_layer_names(model)
     else:
         # if not, init adam optimizer normally.
         return torch.optim.Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
-    base_params = filter(lambda p: id(p) not in ffn_params, model.parameters())
-    ffn_params = filter(lambda p: id(p) in ffn_params, model.parameters())
-    if args.fine_tune_coff == 0:
+    base_params = [param for k, param in model.named_parameters() if k not in ffn_param_names]
+    ffn_params = [param for k, param in model.named_parameters() if k in ffn_param_names]
+    print(f"Number of base params: {len(base_params)}, number of ffn params: {len(ffn_params)}")
+    if math.isclose(args.fine_tune_coff, 0.0, abs_tol=1e-6):
+        print("Freezing parameters of encoder")
         for param in base_params:
             param.requires_grad = False
+    else:
+        print("Not freezing parameters of encoder")
 
     optimizer = torch.optim.Adam([
         {'params': base_params, 'lr': args.init_lr * args.fine_tune_coff},
@@ -708,7 +720,7 @@ def load_checkpoint(path: str,
     :param cuda: Whether to move model to cuda.
     :param logger: A logger.
     :param strict_shape_check: Whether to check if the shape of the loaded model parameters matches the shape of the model parameters.
-    :return: The loaded MPNN.
+    :return: The loaded MPNN and loaded checkpoint state.
     """
     debug = logger.debug if logger is not None else print
 
@@ -757,7 +769,7 @@ def load_checkpoint(path: str,
         debug('Moving model to cuda')
         model = model.cuda()
 
-    return model
+    return model, state
 
 
 def load_checkpoint_for_prediction(path: str,
@@ -890,6 +902,31 @@ def save_checkpoint(path: str,
     torch.save(state, path)
 
 
+def save_model_for_restart(path:str, model, optimizer, scheduler, scaler, features_scaler, args, epoch):
+    """
+    Save the model, optimizer, and scheduler for restart. Saves model state_dict, optimizer state_dict, scheduler state_dict, data_scaler, features_scaler, and args.
+    """
+    # checkpoint_path is the path for pretrained model. It is not needed to restart finetuning.
+    if hasattr(args, 'checkpoint_path'):
+        delattr(args, 'checkpoint_path')
+    state = {
+        'args': args,
+        'epoch': epoch,
+        'state_dict': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'scheduler': scheduler.state_dict(),
+        'data_scaler': {
+            'means': scaler.means,
+            'stds': scaler.stds
+        } if scaler is not None else None,
+        'features_scaler': {
+            'means': features_scaler.means,
+            'stds': features_scaler.stds
+        } if features_scaler is not None else None
+    }
+    torch.save(state, path)
+
+
 def build_model(args: Namespace, model_idx=0):
     """
     Builds a MPNN, which is a message passing neural network + feed-forward layers.
@@ -907,7 +944,8 @@ def build_model(args: Namespace, model_idx=0):
     else:
         # finetune and evaluation case.
         model = KermtFinetuneTask(args)
-    initialize_weights(model=model, model_idx=model_idx)
+    all_param_names = [name for name, _ in model.named_parameters()]
+    initialize_weights(model=model, model_idx=model_idx, init_param_names=all_param_names)
     return model
 
 def get_memory_usage():

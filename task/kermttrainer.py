@@ -367,10 +367,17 @@ class KERMTTrainer:
                 'stds': features_scaler.stds
             } if features_scaler is not None else None
         }
-        torch.save(state, output_path)
+        # Use atomic save pattern: write to .tmp then rename
+        # This prevents corrupted checkpoints if the process is killed mid-write
+        tmp_output_path = output_path + ".tmp"
+        torch.save(state, tmp_output_path)
+        os.replace(tmp_output_path, output_path)  # atomic on POSIX
+
         if save_last:
             last_path = os.path.join(file_path, "last_checkpoint.pt")
-            torch.save(state, last_path)
+            tmp_last_path = last_path + ".tmp"
+            torch.save(state, tmp_last_path)
+            os.replace(tmp_last_path, last_path)  # atomic on POSIX
 
         # Is this necessary?
         # if self.with_cuda:

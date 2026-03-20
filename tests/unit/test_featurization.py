@@ -26,7 +26,7 @@ import pytest
 import torch
 import pandas as pd
 from argparse import Namespace
-from kermt.data.molgraph import mol2graph
+from kermt.data.molgraph import MolGraph, mol2graph
 from kermt.util.features import get_feature_range
 
 import cuik_molmaker
@@ -78,3 +78,10 @@ def test_cuik_molmaker_featurization(bond_drop_rate: float):
     assert torch.allclose(a_scope, batch_mol_graph_ref['a_scope']), f"a_scope are not equal"
     assert torch.allclose(b_scope, batch_mol_graph_ref['b_scope']), f"b_scope are not equal"
     assert torch.allclose(a2a, batch_mol_graph_ref['a2a']), f"a2a are not equal"
+
+
+def test_molgraph_invalid_smiles_raises_valueerror():
+    """MolGraph should raise ValueError on invalid SMILES."""
+    args = Namespace(use_cuikmolmaker_featurization=False, bond_drop_rate=0.0)
+    with pytest.raises(ValueError, match="Invalid SMILES"):
+        MolGraph("not_a_valid_smiles", args=args)

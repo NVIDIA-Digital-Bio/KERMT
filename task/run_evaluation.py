@@ -14,7 +14,7 @@ from kermt.util.utils import get_class_sizes, get_data, split_data, get_task_nam
 from kermt.util.utils import load_checkpoint
 from task.predict import evaluate_predictions
 from kermt.util.metrics import get_metric_func
-from kermt.util.nn_utils import param_count
+from kermt.util.nn_utils import param_count_trainable, param_count_total
 from task.predict import predict
 
 
@@ -101,7 +101,7 @@ def run_evaluation(args: Namespace, logger: Logger = None) -> List[float]:
         # Get loss and metric functions
         loss_func = get_loss_func(args, model)
 
-    debug(f'Number of parameters = {param_count(model):,}')
+    debug(f'Number of total parameters = {param_count_total(model):,}')
 
     test_preds, _ = predict(
         model=model,

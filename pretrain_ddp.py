@@ -39,7 +39,45 @@ from task.kermttrainer import KERMTTrainer
 from kermt.data.torchvocab import MolVocab
 from kermt.data.kermtdataset import BatchMolDataset
 from kermt.util.parsing import parse_args_ddp
-from kermt.util.nn_utils import param_count
+from kermt.util.nn_utils import param_count_trainable, param_count_total
+
+
+def configure_nccl_for_topology():
+    """
+    Auto-configure NCCL settings based on GPU topology.
+    This handles cases where P2P (peer-to-peer) GPU communication is not available.
+    Must be called BEFORE spawning processes (in main process).
+    """
+    # Check if user has already set NCCL settings (don't override)
+    if "NCCL_P2P_DISABLE" in os.environ:
+        print(f"[INFO] Using user-provided NCCL settings: NCCL_P2P_DISABLE={os.environ['NCCL_P2P_DISABLE']}")
+        return
+
+    # Try to detect GPU topology
+    try:
+        import subprocess
+        result = subprocess.run(['nvidia-smi', 'topo', '-m'],
+                              capture_output=True, text=True, timeout=5)
+        topo_output = result.stdout
+
+        # Check for poor GPU connectivity (SYS or NODE topology)
+        # These topologies typically don't support P2P well
+        if 'SYS' in topo_output or 'NODE' in topo_output:
+            print("[INFO] Detected cross-NUMA or system-level GPU topology (SYS/NODE).")
+            print("[INFO] Disabling P2P for stability. This is normal for multi-socket systems.")
+            os.environ["NCCL_P2P_DISABLE"] = "1"
+            os.environ["NCCL_IB_DISABLE"] = "1"
+            os.environ["NCCL_SHM_DISABLE"] = "0"
+        else:
+            print("[INFO] GPU topology appears to support P2P. Enabling P2P communication.")
+    except Exception as e:
+        # If detection fails, use safe defaults (disable P2P)
+        print(f"[WARNING] Could not detect GPU topology: {e}")
+        print("[INFO] Using safe default: P2P disabled. Set NCCL_P2P_DISABLE=0 to enable if your system supports it.")
+        os.environ["NCCL_P2P_DISABLE"] = "1"
+        os.environ["NCCL_IB_DISABLE"] = "1"
+        os.environ["NCCL_SHM_DISABLE"] = "0"
+
 
 def pre_load_data_ddp(dataset: BatchMolDataset, dataset_size: int, samples_per_file: int):
     for i in range(1, dataset_size, samples_per_file):
@@ -137,7 +175,8 @@ def main(rank: int, world_size: int):
     # Build model
     kermt_model = KERMTEmbedding(args)
 
-    print(f'Number of parameters = {param_count(kermt_model):,}')
+    print(f'Number of trainable parameters = {param_count_trainable(kermt_model):,}')
+    print(f'Number of total parameters = {param_count_total(kermt_model):,}')
 
     # Build trainer
     trainer = KERMTTrainer(args=args,
@@ -176,6 +215,10 @@ def main(rank: int, world_size: int):
 
 
 if __name__ == "__main__":
+
+    # Auto-configure NCCL before spawning processes
+    # This detects GPU topology and sets appropriate P2P settings
+    configure_nccl_for_topology()
 
     world_size = os.environ.get("WORLD_SIZE", 1)
     world_size = int(world_size)

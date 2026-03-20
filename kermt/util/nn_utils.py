@@ -7,13 +7,21 @@ import torch
 from torch import nn as nn
 
 
-def param_count(model: nn.Module) -> int:
+def param_count_trainable(model: nn.Module) -> int:
     """
     Determines number of trainable parameters.
     :param model: An nn.Module.
     :return: The number of trainable parameters.
     """
     return sum(param.numel() for param in model.parameters() if param.requires_grad)
+
+def param_count_total(model: nn.Module) -> int:
+    """
+    Determines total number of parameters.
+    :param model: An nn.Module.
+    :return: The number of total parameters.
+    """
+    return sum(param.numel() for param in model.parameters())
 
 
 def index_select_nd(source: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
@@ -61,15 +69,22 @@ def get_activation_function(activation: str) -> nn.Module:
         raise ValueError(f'Activation "{activation}" not supported.')
 
 
-def initialize_weights(model: nn.Module, distinct_init=False, model_idx=0):
+def initialize_weights(model: nn.Module, distinct_init=False, model_idx=0, init_param_names=None):
     """
     Initializes the weights of a model in place.
 
     :param model: An nn.Module.
+    :param distinct_init: Whether to use distinct initialization for different models in the ensemble.
+    :param model_idx: The index of the model.
+    :param init_param_names: The names of the parameters to initialize. If None, no parameters will be initialized.
     """
+    if init_param_names is None:
+        init_param_names = []
     init_fns = [nn.init.kaiming_normal_, nn.init.kaiming_uniform_,
                nn.init.xavier_normal_, nn.init.xavier_uniform_]
-    for param in model.parameters():
+    for name, param in model.state_dict().items():
+        if name not in init_param_names:
+            continue
         if param.dim() == 1:
             nn.init.constant_(param, 0)
         else:

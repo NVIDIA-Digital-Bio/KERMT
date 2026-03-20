@@ -55,10 +55,11 @@ from torch.utils.data import DataLoader
 from kermt.data import MolCollator
 from kermt.data import StandardScaler
 from kermt.util.metrics import get_metric_func
-from kermt.util.nn_utils import initialize_weights, param_count
+from kermt.util.nn_utils import initialize_weights, param_count_trainable, param_count_total
+from torch.utils.tensorboard import SummaryWriter
 from kermt.util.scheduler import NoamLR
 from kermt.util.utils import build_optimizer, build_lr_scheduler, makedirs, load_checkpoint, get_loss_func, \
-    save_checkpoint, build_model
+    save_checkpoint, save_model_for_restart, build_model
 from kermt.util.utils import get_class_sizes, get_data, split_data, get_task_names
 from task.predict import predict, evaluate, evaluate_predictions
 
@@ -167,11 +168,17 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
     test_smiles, test_targets = test_data.smiles(), test_data.targets()
     sum_test_preds = np.zeros((len(test_smiles), args.num_tasks))
 
+    # Check if test data is blinded (no target columns)
+    is_blinded_test = len(test_targets) == 0 or (len(test_targets) > 0 and len(test_targets[0]) == 0)
+
     # Train ensemble of models
     for model_idx in range(args.ensemble_size):
-        # Tensorboard writer
         save_dir = os.path.join(args.save_dir, f'model_{model_idx}')
         makedirs(save_dir)
+
+        # Initialize TensorBoard writer if enabled
+        if args.tensorboard:
+            writer = SummaryWriter(save_dir)
 
         # Load/build model
         if args.checkpoint_paths is not None:
@@ -180,29 +187,57 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
             else:
                 cur_model = model_idx
             debug(f'Loading model {cur_model} from {args.checkpoint_paths[cur_model]}')
-            model = load_checkpoint(args.checkpoint_paths[cur_model], current_args=args, logger=logger)
+            model, loaded_ckpt_state = load_checkpoint(args.checkpoint_paths[cur_model], current_args=args, logger=logger)
         else:
             debug(f'Building model {model_idx}')
             model = build_model(model_idx=model_idx, args=args)
-        if args.fine_tune_coff != 1 and args.checkpoint_paths is not None:
-            debug("Fine tune fc layer with different lr")
-            initialize_weights(model_idx=model_idx, model=model.ffn, distinct_init=args.distinct_init)
+            loaded_ckpt_state = {}
+
         # Get loss and metric functions
         loss_func = get_loss_func(args, model)
 
         optimizer = build_optimizer(model, args)
 
         debug(model)
-        debug(f'Number of parameters = {param_count(model):,}')
+        debug(f'Number of trainable parameters = {param_count_trainable(model):,}')
+        debug(f'Number of total parameters = {param_count_total(model):,}')
         if args.cuda:
             debug('Moving model to cuda')
             model = model.cuda()
+
+        start_epoch = 0  # Default: start from epoch 0
+        # Try to load optimizer state - only use start_epoch if optimizer loads successfully
+        # (indicates resuming a finetune job vs starting fresh from pretrain checkpoint)
+        if args.checkpoint_paths is not None and "optimizer" in loaded_ckpt_state:
+            try:
+                print(f"Loading optimizer state from checkpoint: {args.checkpoint_paths[cur_model]}")
+                optimizer.load_state_dict(loaded_ckpt_state["optimizer"])
+                # Only resume from checkpoint epoch if optimizer loaded successfully
+                if "epoch" in loaded_ckpt_state:
+                    start_epoch = loaded_ckpt_state["epoch"]
+                    print(f"Resuming from epoch {start_epoch}")
+            except ValueError as e:
+                print(f"Could not load optimizer state (model structure may differ): {e}")
+                print("Starting fresh finetuning from epoch 0.")
 
         # Ensure that model is saved in correct location for evaluation if 0 epochs
         save_checkpoint(os.path.join(save_dir, 'model.pt'), model, scaler, features_scaler, args)
 
         # Learning rate schedulers
         scheduler = build_lr_scheduler(optimizer, args)
+
+        # Only load scheduler state if we're resuming (start_epoch > 0 means optimizer loaded successfully)
+        if start_epoch > 0 and "scheduler" in loaded_ckpt_state:
+            try:
+                print(f"Loading scheduler state from checkpoint: {args.checkpoint_paths[cur_model]}")
+                scheduler.load_state_dict(loaded_ckpt_state["scheduler"])
+            except (ValueError, KeyError) as e:
+                raise RuntimeError(
+                    f"Failed to load scheduler state from checkpoint "
+                    f"{args.checkpoint_paths[cur_model]}: {e}. "
+                    f"Optimizer loaded successfully (start_epoch={start_epoch}) "
+                    f"but scheduler is incompatible — checkpoint may be corrupted."
+                ) from e
 
         # Bulid data_loader
         shuffle = True
@@ -216,7 +251,7 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
         best_score = float('inf') if args.minimize_score else -float('inf')
         best_epoch, n_iter = 0, 0
         min_val_loss = float('inf')
-        for epoch in range(args.epochs):
+        for epoch in range(start_epoch, args.epochs):
             s_time = time.time()
             n_iter, train_loss = train(
                 epoch=epoch,
@@ -263,7 +298,7 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
                   'cur_lr: {:.5f}'.format(scheduler.get_lr()[-1]),
                   't_time: {:.4f}s'.format(t_time),
                   'v_time: {:.4f}s'.format(v_time),
-                  )
+                  flush=True)
 
             if args.tensorboard:
                 writer.add_scalar('loss/train', train_loss, epoch)
@@ -277,6 +312,9 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
             else:
                 curr_epoch_best_by_loss = False
 
+            save_model_for_restart(os.path.join(save_dir, 'last_checkpoint.pt'), model, optimizer, scheduler, scaler, features_scaler, args,
+            epoch+1 # save with +1 so that loaded checkpoint will start from the next epoch
+            )
             # Save model checkpoint if improved validation score
             if args.select_by_loss:
                 if curr_epoch_best_by_loss:
@@ -297,12 +335,12 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
             info(f'Model {model_idx} best val loss = {min_val_loss:.6f} on epoch {best_epoch}')
         else:
             info(f'Model {model_idx} best validation {args.metric} = {best_score:.6f} on epoch {best_epoch}')
-        model = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
+        model, _ = load_checkpoint(os.path.join(save_dir, 'model.pt'), cuda=args.cuda, logger=logger)
 
         test_preds, _ = predict(
             model=model,
             data=test_data,
-            loss_func=loss_func,
+            loss_func=None if is_blinded_test else loss_func,  # Skip loss calc for blinded data
             batch_size=args.batch_size,
             logger=logger,
             shared_dict=shared_dict,
@@ -310,53 +348,68 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
             args=args
         )
 
-        test_scores = evaluate_predictions(
-            preds=test_preds,
-            targets=test_targets,
-            num_tasks=args.num_tasks,
-            metric_func=metric_func,
-            dataset_type=args.dataset_type,
-            logger=logger
-        )
-
         if len(test_preds) != 0:
             sum_test_preds += np.array(test_preds, dtype=float)
 
-        # Average test score
-        avg_test_score = np.nanmean(test_scores)
-        info(f'Model {model_idx} test {args.metric} = {avg_test_score:.6f}')
+        if not is_blinded_test:
+            test_scores = evaluate_predictions(
+                preds=test_preds,
+                targets=test_targets,
+                num_tasks=args.num_tasks,
+                metric_func=metric_func,
+                dataset_type=args.dataset_type,
+                logger=logger
+            )
 
-        if args.show_individual_scores:
-            # Individual test scores
-            for task_name, test_score in zip(args.task_names, test_scores):
-                info(f'Model {model_idx} test {task_name} {args.metric} = {test_score:.6f}')
+            # Average test score
+            avg_test_score = np.nanmean(test_scores)
+            info(f'Model {model_idx} test {args.metric} = {avg_test_score:.6f}')
+
+            if args.show_individual_scores:
+                # Individual test scores
+                for task_name, test_score in zip(args.task_names, test_scores):
+                    info(f'Model {model_idx} test {task_name} {args.metric} = {test_score:.6f}')
+        else:
+            info(f'Model {model_idx} test: Blinded data - skipping metric evaluation')
 
         # Evaluate ensemble on test set
         avg_test_preds = (sum_test_preds / args.ensemble_size).tolist()
 
-        ensemble_scores = evaluate_predictions(
-            preds=avg_test_preds,
-            targets=test_targets,
-            num_tasks=args.num_tasks,
-            metric_func=metric_func,
-            dataset_type=args.dataset_type,
-            logger=logger
-        )
+        if not is_blinded_test:
+            ensemble_scores = evaluate_predictions(
+                preds=avg_test_preds,
+                targets=test_targets,
+                num_tasks=args.num_tasks,
+                metric_func=metric_func,
+                dataset_type=args.dataset_type,
+                logger=logger
+            )
 
-        ind = [['preds'] * args.num_tasks + ['targets'] * args.num_tasks, args.task_names * 2]
-        ind = pd.MultiIndex.from_tuples(list(zip(*ind)))
-        data = np.concatenate([np.array(avg_test_preds), np.array(test_targets)], 1)
-        test_result = pd.DataFrame(data, index=test_smiles, columns=ind)
-        test_result.to_csv(os.path.join(args.save_dir, 'test_result.csv'))
+            # Output with both predictions and targets
+            ind = [['preds'] * args.num_tasks + ['targets'] * args.num_tasks, args.task_names * 2]
+            ind = pd.MultiIndex.from_tuples(list(zip(*ind)))
+            data = np.concatenate([np.array(avg_test_preds), np.array(test_targets)], 1)
+            test_result = pd.DataFrame(data, index=test_smiles, columns=ind)
+            test_result.to_csv(os.path.join(args.save_dir, 'test_result.csv'))
 
-        # Average ensemble score
-        avg_ensemble_test_score = np.nanmean(ensemble_scores)
-        info(f'Ensemble test {args.metric} = {avg_ensemble_test_score:.6f}')
+            # Average ensemble score
+            avg_ensemble_test_score = np.nanmean(ensemble_scores)
+            info(f'Ensemble test {args.metric} = {avg_ensemble_test_score:.6f}')
 
-        # Individual ensemble scores
-        if args.show_individual_scores:
-            for task_name, ensemble_score in zip(args.task_names, ensemble_scores):
-                info(f'Ensemble test {task_name} {args.metric} = {ensemble_score:.6f}')
+            # Individual ensemble scores
+            if args.show_individual_scores:
+                for task_name, ensemble_score in zip(args.task_names, ensemble_scores):
+                    info(f'Ensemble test {task_name} {args.metric} = {ensemble_score:.6f}')
+        else:
+            # Blinded test data - output predictions only
+            ensemble_scores = [float('nan')] * args.num_tasks
+            test_result = pd.DataFrame(avg_test_preds, index=test_smiles, columns=args.task_names)
+            test_result.to_csv(os.path.join(args.save_dir, 'test_result.csv'))
+            info(f'Ensemble test: Blinded data - predictions saved to test_result.csv')
+
+        # Close TensorBoard writer
+        if args.tensorboard:
+            writer.close()
 
     if return_val:
         return ensemble_scores, min_val_loss

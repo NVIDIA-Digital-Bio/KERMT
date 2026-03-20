@@ -237,6 +237,20 @@ def add_finetune_args(parser: ArgumentParser):
     parser.add_argument('--activation', type=str, default='ReLU',
                         choices=['ReLU', 'LeakyReLU', 'PReLU', 'tanh', 'SELU', 'ELU'],
                         help='Activation function')
+    # Encoder architecture arguments (required when training from scratch without checkpoint)
+    parser.add_argument('--hidden_size', type=int, default=800,
+                        help='Encoder hidden dimension. Default: 800 (matches pretrained models)')
+    parser.add_argument('--depth', type=int, default=6,
+                        help='Number of encoder message passing layers. Default: 6')
+    parser.add_argument('--num_attn_head', type=int, default=4,
+                        help='Number of attention heads in encoder MTBlock. Default: 4')
+    parser.add_argument('--num_mt_block', type=int, default=1,
+                        help='Number of MTBlocks in encoder. Default: 1')
+    parser.add_argument('--bias', action='store_true', default=False,
+                        help='Whether to add bias to encoder linear layers. Default: False')
+    parser.add_argument('--undirected', action='store_true', default=False,
+                        help='Use undirected edges (sum the two relevant bond vectors). Default: False')
+
     parser.add_argument('--ffn_hidden_size', type=int, default=None,
                         help='Hidden dim for higher-capacity FFN (defaults to hidden_size)')
     parser.add_argument('--ffn_num_layers', type=int, default=2,
@@ -255,8 +269,8 @@ def add_finetune_args(parser: ArgumentParser):
                                                                                      'layer.')
     parser.add_argument('--attn_hidden', type=int, default=4, nargs='?', help='Self attention layer '
                                                                               'hidden layer size.')
-    parser.add_argument('--attn_out', type=int, default=128, nargs='?', help='Self attention layer '
-                                                                             'output feature size.')
+    parser.add_argument('--attn_out', type=int, default=8, nargs='?', help='Self attention layer '
+                                                                             'output feature size (FFN input = hidden_size * attn_out).')
 
     parser.add_argument('--dist_coff', type=float, default=0.1, help='The dist coefficient for output of two branches.')
 
@@ -507,6 +521,9 @@ def modify_train_args(args: Namespace):
         args.no_cache = True
 
     setattr(args, 'fingerprint', False)
+
+    # Set dense=False for encoder (required when training from scratch)
+    args.dense = False
 
 
 def modify_pretrain_args(args: Namespace):
