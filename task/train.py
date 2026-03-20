@@ -232,8 +232,12 @@ def run_training(args: Namespace, logger: Logger = None, return_val=False) -> Li
                 print(f"Loading scheduler state from checkpoint: {args.checkpoint_paths[cur_model]}")
                 scheduler.load_state_dict(loaded_ckpt_state["scheduler"])
             except (ValueError, KeyError) as e:
-                print(f"Could not load scheduler state: {e}")
-                print("Starting with fresh scheduler state.")
+                raise RuntimeError(
+                    f"Failed to load scheduler state from checkpoint "
+                    f"{args.checkpoint_paths[cur_model]}: {e}. "
+                    f"Optimizer loaded successfully (start_epoch={start_epoch}) "
+                    f"but scheduler is incompatible — checkpoint may be corrupted."
+                ) from e
 
         # Bulid data_loader
         shuffle = True
