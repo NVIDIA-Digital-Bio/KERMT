@@ -118,6 +118,8 @@ def predict(data_dir):
         "--data_path", str(data_dir / "finetune/test.csv"),
         "--checkpoint_dir", "test_run/finetune/",
         "--no_features_scaling",
+        "--features_generator", "rdkit_2d_normalized_cuik_molmaker",
+        "--rdkit2D_normalization_type", "descriptastorus",
         "--output", "test_run/predict/predict.csv"
     ]
     env = os.environ.copy()

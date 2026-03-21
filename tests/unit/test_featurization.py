@@ -35,7 +35,7 @@ import cuik_molmaker
 def test_cuik_molmaker_featurization(bond_drop_rate: float):
     smis = pd.read_csv('tests/data/smis.csv')['smiles'].tolist()
 
-    # Form feature tensors for cuik-molmaker
+    # Form feature arrays for cuik-molmaker
     cmm_feature_tensors = {}
     atom_onehot_props = ["atomic-number", "total-degree", "formal-charge", "chirality",
                         "num-hydrogens", "hybridization",
@@ -43,15 +43,15 @@ def test_cuik_molmaker_featurization(bond_drop_rate: float):
                         "ring-size",
                         ]
 
-    cmm_feature_tensors["atom_onehot"] = cuik_molmaker.atom_onehot_feature_names_to_tensor(atom_onehot_props)
+    cmm_feature_tensors["atom_onehot"] = cuik_molmaker.atom_onehot_feature_names_to_array(atom_onehot_props)
     atom_float_props = ["aromatic", "mass", 
                         "hydrogen-bond-acceptor",
                             "hydrogen-bond-donor", 
                             "acidic", "basic"
                             ]
-    cmm_feature_tensors["atom_float"] = cuik_molmaker.atom_float_feature_names_to_tensor(atom_float_props)
+    cmm_feature_tensors["atom_float"] = cuik_molmaker.atom_float_feature_names_to_array(atom_float_props)
     bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
-    cmm_feature_tensors["bond"] = cuik_molmaker.bond_feature_names_to_tensor(bond_props)
+    cmm_feature_tensors["bond"] = cuik_molmaker.bond_feature_names_to_array(bond_props)
 
     # Get feature ranges for cuik-molmaker
     cmm_feature_range = get_feature_range(atom_onehot_props, atom_float_props)
