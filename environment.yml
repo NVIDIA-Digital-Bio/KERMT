@@ -9,7 +9,8 @@ channels:
 dependencies:
   - python=3.11
   - pytorch-gpu=2.7.1
-  - rdkit=2025.03.2
+  - rdkit=2025.09.1
+  - cuik_molmaker>=0.2
   - descriptastorus>2.2.0
   - optuna
   - scikit-learn
