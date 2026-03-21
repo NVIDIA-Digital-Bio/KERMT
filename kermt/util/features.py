@@ -35,8 +35,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 from dataclasses import dataclass
+import numpy as np
 import cuik_molmaker
-import torch
 
 
 @dataclass
@@ -54,17 +54,17 @@ def get_feature_range(atom_props_onehot, atom_props_float):
     
     # Get ranges for one-hot encoded features
     for atom_prop in atom_props_onehot:
-        atom_prop_tensor = cuik_molmaker.atom_onehot_feature_names_to_tensor([atom_prop])
-        atom_feats_cmm, _, _, _, _ = cuik_molmaker.mol_featurizer(smi, atom_prop_tensor, 
-            torch.tensor([]), torch.tensor([]), False, False, True, False)
+        atom_prop_array = cuik_molmaker.atom_onehot_feature_names_to_array([atom_prop])
+        atom_feats_cmm, _, _, _, _ = cuik_molmaker.mol_featurizer(smi, atom_prop_array, 
+            np.array([]), np.array([]), False, False, True, False)
         feature_ranges[atom_prop] = FeatureRange(feature_start_idx, feature_start_idx + atom_feats_cmm.shape[1])
         feature_start_idx += atom_feats_cmm.shape[1]
     
     # Get ranges for float features
     for atom_prop in atom_props_float:
-        atom_prop_tensor = cuik_molmaker.atom_float_feature_names_to_tensor([atom_prop])
-        atom_feats_cmm, _, _, _, _ = cuik_molmaker.mol_featurizer(smi, torch.tensor([]), 
-            atom_prop_tensor, torch.tensor([]), False, False, True, False)
+        atom_prop_array = cuik_molmaker.atom_float_feature_names_to_array([atom_prop])
+        atom_feats_cmm, _, _, _, _ = cuik_molmaker.mol_featurizer(smi, np.array([]), 
+            atom_prop_array, np.array([]), False, False, True, False)
         feature_ranges[atom_prop] = FeatureRange(feature_start_idx, feature_start_idx + atom_feats_cmm.shape[1])
         feature_start_idx += atom_feats_cmm.shape[1]
     

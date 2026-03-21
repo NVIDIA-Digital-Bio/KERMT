@@ -179,22 +179,22 @@ class KermtCollator(object):
         self.bond_vocab = bond_vocab
 
         if args.use_cuikmolmaker_featurization:
-            # Form feature tensors for cuik-molmaker
+            # Form feature arrays for cuik-molmaker
             self.cmm_feature_tensors = {}
             atom_onehot_props = ["atomic-number", "total-degree", "formal-charge", "chirality",
                                 "num-hydrogens", "hybridization",
                                 "implicit-valence", 
                                 "ring-size",
                                 ]
-            self.cmm_feature_tensors["atom_onehot"] = cuik_molmaker.atom_onehot_feature_names_to_tensor(atom_onehot_props)
+            self.cmm_feature_tensors["atom_onehot"] = cuik_molmaker.atom_onehot_feature_names_to_array(atom_onehot_props)
             atom_float_props = ["aromatic", "mass", 
                                 "hydrogen-bond-acceptor",
                                     "hydrogen-bond-donor", 
                                     "acidic", "basic"
                                     ]
-            self.cmm_feature_tensors["atom_float"] = cuik_molmaker.atom_float_feature_names_to_tensor(atom_float_props)
+            self.cmm_feature_tensors["atom_float"] = cuik_molmaker.atom_float_feature_names_to_array(atom_float_props)
             bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
-            self.cmm_feature_tensors["bond"] = cuik_molmaker.bond_feature_names_to_tensor(bond_props)
+            self.cmm_feature_tensors["bond"] = cuik_molmaker.bond_feature_names_to_array(bond_props)
 
             # Get feature ranges for cuik-molmaker
             self.cmm_feature_range = get_feature_range(atom_onehot_props, atom_float_props)
