@@ -180,21 +180,21 @@ class KermtCollator(object):
 
         if args.use_cuikmolmaker_featurization:
             # Form feature arrays for cuik-molmaker
-            self.cmm_feature_tensors = {}
+            self.cmm_feature_arrays = {}
             atom_onehot_props = ["atomic-number", "total-degree", "formal-charge", "chirality",
                                 "num-hydrogens", "hybridization",
                                 "implicit-valence", 
                                 "ring-size",
                                 ]
-            self.cmm_feature_tensors["atom_onehot"] = cuik_molmaker.atom_onehot_feature_names_to_array(atom_onehot_props)
+            self.cmm_feature_arrays["atom_onehot"] = cuik_molmaker.atom_onehot_feature_names_to_array(atom_onehot_props)
             atom_float_props = ["aromatic", "mass", 
                                 "hydrogen-bond-acceptor",
                                     "hydrogen-bond-donor", 
                                     "acidic", "basic"
                                     ]
-            self.cmm_feature_tensors["atom_float"] = cuik_molmaker.atom_float_feature_names_to_array(atom_float_props)
+            self.cmm_feature_arrays["atom_float"] = cuik_molmaker.atom_float_feature_names_to_array(atom_float_props)
             bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
-            self.cmm_feature_tensors["bond"] = cuik_molmaker.bond_feature_names_to_array(bond_props)
+            self.cmm_feature_arrays["bond"] = cuik_molmaker.bond_feature_names_to_array(bond_props)
 
             # Get feature ranges for cuik-molmaker
             self.cmm_feature_range = get_feature_range(atom_onehot_props, atom_float_props)
@@ -259,7 +259,7 @@ class KermtCollator(object):
         batch, idx = zip(*batch_idx)
         smiles_batch = [d.smiles for d in batch]
         if self.args.use_cuikmolmaker_featurization:
-            batchgraph = mol2graph(smiles_batch, self.shared_dict, self.args, cmm_feature_range=self.cmm_feature_range, cmm_tensors=self.cmm_feature_tensors).get_components()
+            batchgraph = mol2graph(smiles_batch, self.shared_dict, self.args, cmm_feature_range=self.cmm_feature_range, cmm_tensors=self.cmm_feature_arrays).get_components()
         else:
             batchgraph = mol2graph(smiles_batch, self.shared_dict, self.args).get_components()
 
