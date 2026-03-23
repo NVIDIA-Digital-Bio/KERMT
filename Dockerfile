@@ -49,8 +49,5 @@ RUN rm -rf /code/.git /code/.code-workspace
 # Equivalent to `conda activate kermt`
 SHELL ["conda", "run", "--no-capture-output", "-n", "kermt", "/bin/bash", "-c"]
 
-# Install the cuik_molmaker from wheel
-RUN pip install cuik_molmaker==0.1.1 --index-url https://pypi.nvidia.com/rdkit-2025.03.2_torch-2.7.1/
-
 # provide defaults for the executing container
 CMD [ "/bin/bash" ]

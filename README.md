@@ -45,13 +45,10 @@ export CUBLAS_WORKSPACE_CONFIG=:4096:8 # for deterministic results
 
 #### [Alternative to Docker container] Install conda environment from file
 ```bash
-# Create conda environment
+# Create conda environment (includes cuik-molmaker)
 cd KERMT
 conda env create -n kermt -f environment.yml
 conda activate kermt
-
-# Install cuik-molmaker
-pip install cuik_molmaker==0.1.1 --index-url https://pypi.nvidia.com/rdkit-2025.03.2_torch-2.7.1/
 ```
 
 ## Pretained Model Download

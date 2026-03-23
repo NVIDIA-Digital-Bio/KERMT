@@ -54,8 +54,6 @@ from cuik_molmaker.mol_features import MoleculeFeaturizer
 from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
 from kermt.util.features import FeatureRange, get_feature_range
 
-import cuik_molmaker
-
 # Atom feature sizes
 MAX_ATOMIC_NUM = 100
 
@@ -473,12 +471,14 @@ def mol2graph(smiles_batch: List[str], shared_dict,
     if args.use_cuikmolmaker_featurization:
 
 
-        atom_props_onehot_tensor = cmm_tensors["atom_onehot"]
-        atom_props_float_tensor = cmm_tensors["atom_float"]
-        bond_props_tensor = cmm_tensors["bond"]
+        atom_props_onehot_array = cmm_tensors["atom_onehot"]
+        atom_props_float_array = cmm_tensors["atom_float"]
+        bond_props_array = cmm_tensors["bond"]
         add_h, offset_carbon, duplicate_edges, add_self_loop = False, False, True, False
-        batch_feats = cuik_molmaker.batch_mol_featurizer(smiles_batch, atom_props_onehot_tensor, atom_props_float_tensor, bond_props_tensor, add_h, offset_carbon, duplicate_edges, add_self_loop)
+        batch_feats = cuik_molmaker.batch_mol_featurizer(smiles_batch, atom_props_onehot_array, atom_props_float_array, bond_props_array, add_h, offset_carbon, duplicate_edges, add_self_loop)
         atom_feats_cmm, bond_feats_cmm, _, _, _ = batch_feats
+        atom_feats_cmm = torch.from_numpy(atom_feats_cmm).float()
+        bond_feats_cmm = torch.from_numpy(bond_feats_cmm).float()
 
         # For atomic features, cuik-molmaker always returns one-hot encoded features first followed by float features
         # We need to rearrange the features to match the order of the features expected by KERMT model
@@ -527,23 +527,23 @@ class MolCollator(object):
             self.rdkit2d_featurizer = None
 
         if args.use_cuikmolmaker_featurization:
-            # Form feature tensors for cuik-molmaker
-            self.cmm_feature_tensors = {}
+            # Form feature arrays for cuik-molmaker
+            self.cmm_feature_arrays = {}
             atom_onehot_props = ["atomic-number", "total-degree", "formal-charge", "chirality",
                                 "num-hydrogens", "hybridization",
                                 "implicit-valence", 
                                 "ring-size",
                                 ]
 
-            self.cmm_feature_tensors["atom_onehot"] = cuik_molmaker.atom_onehot_feature_names_to_tensor(atom_onehot_props)
+            self.cmm_feature_arrays["atom_onehot"] = cuik_molmaker.atom_onehot_feature_names_to_array(atom_onehot_props)
             atom_float_props = ["aromatic", "mass", 
                                 "hydrogen-bond-acceptor",
                                     "hydrogen-bond-donor", 
                                     "acidic", "basic"
                                     ]
-            self.cmm_feature_tensors["atom_float"] = cuik_molmaker.atom_float_feature_names_to_tensor(atom_float_props)
+            self.cmm_feature_arrays["atom_float"] = cuik_molmaker.atom_float_feature_names_to_array(atom_float_props)
             bond_props = ["is-null", "bond-type-onehot", "conjugated", "in-ring", "stereo"]
-            self.cmm_feature_tensors["bond"] = cuik_molmaker.bond_feature_names_to_tensor(bond_props)
+            self.cmm_feature_arrays["bond"] = cuik_molmaker.bond_feature_names_to_array(bond_props)
 
             # Get feature ranges for cuik-molmaker
             self.cmm_feature_range = get_feature_range(atom_onehot_props, atom_float_props)
@@ -570,7 +570,7 @@ class MolCollator(object):
 
         target_batch = [d.targets for d in batch]
         if self.args.use_cuikmolmaker_featurization:
-            batch_mol_graph = mol2graph(smiles_batch, self.shared_dict, self.args, cmm_feature_range=self.cmm_feature_range, cmm_tensors=self.cmm_feature_tensors)
+            batch_mol_graph = mol2graph(smiles_batch, self.shared_dict, self.args, cmm_feature_range=self.cmm_feature_range, cmm_tensors=self.cmm_feature_arrays)
         else:
             batch_mol_graph = mol2graph(smiles_batch, self.shared_dict, self.args)
         batch = batch_mol_graph.get_components()

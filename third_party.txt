@@ -1,5 +1,5 @@
 Name: cuik_molmaker
-Version: 0.1
+Version: 0.2
 License: Apache Software License
 URL: https://github.com/NVIDIA-Digital-Bio/cuik-molmaker
 License Text:
