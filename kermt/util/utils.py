@@ -899,7 +899,9 @@ def save_checkpoint(path: str,
             'stds': features_scaler.stds
         } if features_scaler is not None else None
     }
-    torch.save(state, path)
+    tmp_path = path + ".tmp"
+    torch.save(state, tmp_path)
+    os.replace(tmp_path, path)
 
 
 def save_model_for_restart(path:str, model, optimizer, scheduler, scaler, features_scaler, args, epoch):
@@ -924,7 +926,9 @@ def save_model_for_restart(path:str, model, optimizer, scheduler, scaler, featur
             'stds': features_scaler.stds
         } if features_scaler is not None else None
     }
-    torch.save(state, path)
+    tmp_path = path + ".tmp"
+    torch.save(state, tmp_path)
+    os.replace(tmp_path, path)
 
 
 def build_model(args: Namespace, model_idx=0):
